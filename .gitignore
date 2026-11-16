@@ -3,3 +3,8 @@ data/
 node_modules/
 
 config.json
+functions/server/
+functions/config.json
+functions/node_modules/
+public/
+.firebase/

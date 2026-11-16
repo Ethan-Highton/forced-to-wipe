@@ -4,7 +4,7 @@
   "region": "us",
   "namespace": "profile-forever-us",
   "locale": "en_US",
-  "refreshMinutes": 60,
+  "refreshMinutes": 15,
   "port": 8810,
   "host": "0.0.0.0",
   "basePath": "",
@@ -16,3 +16,4 @@
   "activityDays": { "quiet": 3, "inactive": 14 },
   "xpTable": true
 }
+

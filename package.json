@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "forced-to-wipe",
   "version": "0.1.0",
   "description": "Guild tracker for WoW Forever guilds, powered by the Battle.net API",
@@ -9,6 +9,7 @@
     "start": "node server/server.js",
     "setup": "node server/setup.js",
     "test": "node --test tests/",
-    "import-levelups": "node server/import-levelups.js"
+    "import-levelups": "node server/import-levelups.js",
+    "deploy": "firebase deploy"
   }
 }

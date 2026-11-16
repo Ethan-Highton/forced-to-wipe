@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-import { serveStatic } from './static.js';
 import { rosterCsv, statsCsv, levelupsCsv } from './csv.js';
 
 const SECURITY_HEADERS = {
@@ -45,10 +44,15 @@ function readBody(req, limit = 4096) {
 
 /**
  * Builds the request handler.
- * ctx: { config, store, refresher, limiter, accessCode, log, staticRoot, now }
+ * ctx: { config, store, refresher, limiter, accessCode, log, staticRoot, now, serveStatic, awaitRefresh }
+ * serveStatic:false leaves static files to a CDN (static.js is then never loaded);
+ * awaitRefresh:true finishes the refresh before responding (serverless: no background work).
  */
 export function createHandler(ctx) {
-  const { config, store, refresher, limiter, accessCode = '', log = () => {}, staticRoot, now = Date.now } = ctx;
+  const {
+    config, store, refresher, limiter, accessCode = '', log = () => {}, staticRoot, now = Date.now,
+    serveStatic: withStatic = true, awaitRefresh = false,
+  } = ctx;
   const startedAt = now();
   const base = config.basePath;
   const cookieValue = accessCode ? hash(`ftw:${accessCode}`).toString('hex') : '';
@@ -120,7 +124,8 @@ export function createHandler(ctx) {
       const verdict = limiter.check(ip);
       if (!verdict.ok) return sendJson(res, 429, { retryAfterSec: verdict.retryAfterSec }, { 'Retry-After': String(verdict.retryAfterSec) });
       limiter.markStarted();
-      refresher.run().catch((err) => log(`Manual refresh crashed: ${err.message}`));
+      const running = refresher.run().catch((err) => log(`Manual refresh crashed: ${err.message}`));
+      if (awaitRefresh) await running;
       return sendJson(res, 202, { started: true });
     }
     if (method !== 'GET' && method !== 'HEAD') return sendJson(res, 405, { error: 'method not allowed' }, { Allow: 'GET, HEAD' });
@@ -178,7 +183,10 @@ export function createHandler(ctx) {
         if (!hasAccess(req)) return loginPage(res);
       }
       if (pathname.startsWith('/api/')) return await handleApi(req, res, url, pathname.slice(5), ip);
-      if (await serveStatic(req, res, pathname, staticRoot)) return;
+      if (withStatic) {
+        const { serveStatic } = await import('./static.js');
+        if (await serveStatic(req, res, pathname, staticRoot)) return;
+      }
       return notFound(res);
     } catch (err) {
       log(`Request error: ${err.message}`);
