@@ -49,21 +49,25 @@ const mock = {
       talents: level >= 10 ? { trees: extra.trees, ...sec } : null,
       professions: level >= 10 ? { primary: extra.prof, secondary: [{ name: 'Cooking', skill: 80, max: 150 }], ...sec } : null,
       stats: level >= 10 ? {
-        deaths: extra.deaths ?? 3, quests: 120 + level, dungeons: 4, bossKills: 6,
-        bosses: [{ name: 'Bazzalan', instance: 'Ragefire Chasm', count: 3 }, { name: "Rath'mael", instance: 'Ruins of Lordaeron', count: 3 }],
+        deaths: extra.deaths ?? 3, quests: extra.quests ?? 120 + level, dungeons: 4 + (extra.bosses || []).length,
+        bossKills: (extra.bosses || []).reduce((s, b) => s + b.count, 0),
+        bosses: extra.bosses || [],
         ...sec,
       } : null,
-      pvp: level >= 10 ? { hk: 40 * level, bgs: [{ name: 'Warsong Gulch', played: 10, won: 6 }], ...sec } : null,
+      pvp: level >= 10 && !extra.noPvp ? { hk: 40 * level, bgs: extra.bgs || [{ name: 'Warsong Gulch', played: 10, won: 6 }], ...sec } : null,
     });
+    const rfc = (name, count) => ({ name, instance: 'Ragefire Chasm', count });
+    const wc = (name, count) => ({ name, instance: 'Wailing Caverns', count });
+    const dm = (name, count) => ({ name, instance: 'The Deadmines', count });
     return {
       meta: { refreshedAt: now - 23 * 60000, refreshStatus: 'ok', lastSuccessAt: now - 23 * 60000, lastAttemptAt: now - 23 * 60000, refreshMinutes: 60, cooldownSec: 0 },
       guild: { name: 'Forced to Wipe', memberCount: 5 },
       errors: [],
       members: [
-        make(1, 'Jeezus', 'Khryst', 0, 5, 'Priest', 'Troll', 35, 20 * 60000, 2 * D, { trees: [tree('Discipline', 19), tree('Shadow Magic', 7)], prof: [{ name: 'Tailoring', skill: 150, max: 225 }, { name: 'Enchanting', skill: 225, max: 225 }], deaths: 7 }),
-        make(2, 'Carlos', 'Ruiz', 1, 4, 'Rogue', 'Human', 35, 5 * D, 9 * D, { trees: [tree('Assassination', 21), tree('Subtlety', 6)], prof: [{ name: 'Mining', skill: 140, max: 150 }] }),
-        make(3, 'Brenna', 'Ashvale', 2, 8, 'Mage', 'Gnome', 28, 30 * D, 40 * D, { trees: [tree('Frost', 18)], prof: [{ name: 'Tailoring', skill: 200, max: 225 }] }),
-        make(4, 'Ünsal', 'Grimtotem', 2, 7, 'Shaman', 'Tauren', 41, 2 * H, 6 * H, { trees: [tree('Restoration', 25), tree('Enhancement', 11)], prof: [{ name: 'Herbalism', skill: 230, max: 300 }] }),
+        make(1, 'Jeezus', 'Khryst', 0, 5, 'Priest', 'Troll', 35, 20 * 60000, 2 * D, { trees: [tree('Discipline', 19), tree('Shadow Magic', 7)], prof: [{ name: 'Tailoring', skill: 150, max: 225 }, { name: 'Enchanting', skill: 225, max: 225 }], deaths: 7, quests: 310, bosses: [rfc('Bazzalan', 3), rfc('Taragaman the Hungerer', 2), wc('Mutanus the Devourer', 1)], bgs: [{ name: 'Warsong Gulch', played: 10, won: 6 }, { name: 'Arathi Basin', played: 4, won: 1 }] }),
+        make(2, 'Carlos', 'Ruiz', 1, 4, 'Rogue', 'Human', 35, 5 * D, 9 * D, { trees: [tree('Assassination', 21), tree('Subtlety', 6)], prof: [{ name: 'Mining', skill: 140, max: 150 }], deaths: 12, quests: 255, bosses: [rfc('Bazzalan', 2), dm('Edwin VanCleef', 4), dm('Mr. Smite', 4)], bgs: [{ name: 'Warsong Gulch', played: 20, won: 14 }] }),
+        make(3, 'Brenna', 'Ashvale', 2, 8, 'Mage', 'Gnome', 28, 30 * D, 40 * D, { trees: [tree('Frost', 18)], prof: [{ name: 'Tailoring', skill: 200, max: 225 }], deaths: 7, quests: 198, bosses: [wc('Mutanus the Devourer', 2)], noPvp: true }),
+        make(4, 'Ünsal', 'Grimtotem', 2, 7, 'Shaman', 'Tauren', 41, 2 * H, 6 * H, { trees: [tree('Restoration', 25), tree('Enhancement', 11)], prof: [{ name: 'Herbalism', skill: 230, max: 300 }], deaths: 2, quests: 402, bosses: [rfc('Bazzalan', 5), wc('Mutanus the Devourer', 3), dm('Edwin VanCleef', 1)], bgs: [{ name: 'Warsong Gulch', played: 1, won: 1 }] }),
         make(5, 'Pip', 'Tinker', 3, 1, 'Warrior', 'Dwarf', 7, 1 * D, null, {}),
       ],
     };

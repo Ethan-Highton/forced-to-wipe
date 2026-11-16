@@ -73,6 +73,89 @@ export function bgTotals(pvp) {
   return { played, won, winRate: played ? won / played : null };
 }
 
+// value / level, or null when either is missing or the level is zero.
+export function perLevel(value, level) {
+  if (value == null || !level) return null;
+  return value / level;
+}
+
+// Sums across members that have the relevant data; missing stats/pvp count as nothing.
+export function guildTotals(members) {
+  const t = { deaths: 0, quests: 0, dungeons: 0, bossKills: 0, hk: 0, bgPlayed: 0, bgWon: 0, bgLost: 0, bgWinRate: null, withStats: 0, withPvp: 0 };
+  for (const m of members || []) {
+    if (m.stats) {
+      t.withStats++;
+      t.deaths += m.stats.deaths || 0;
+      t.quests += m.stats.quests || 0;
+      t.dungeons += m.stats.dungeons || 0;
+      t.bossKills += m.stats.bossKills || 0;
+    }
+    if (m.pvp) {
+      t.withPvp++;
+      t.hk += m.pvp.hk || 0;
+      const bg = bgTotals(m.pvp);
+      t.bgPlayed += bg.played;
+      t.bgWon += bg.won;
+    }
+  }
+  t.bgLost = t.bgPlayed - t.bgWon;
+  t.bgWinRate = t.bgPlayed ? t.bgWon / t.bgPlayed : null;
+  return t;
+}
+
+const memberName = (m) => [m.name, m.surname].filter(Boolean).join(' ');
+
+// Top n members by getValue (null/undefined = no data, excluded). `min` is a floor on
+// opts.played(m) (default: the value itself). Ties share a rank and `share` (value / leader
+// value, 0 when the leader is 0) and keep name order.
+export function leaders(members, getValue, n = 5, opts = {}) {
+  const { min, played } = opts;
+  const rows = [];
+  for (const m of members || []) {
+    const value = getValue(m);
+    if (value == null || Number.isNaN(value)) continue;
+    if (min != null) {
+      const p = played ? played(m) : value;
+      if (p == null || p < min) continue;
+    }
+    rows.push({ member: m, value });
+  }
+  rows.sort((a, b) => b.value - a.value || memberName(a.member).localeCompare(memberName(b.member)));
+  const top = rows.slice(0, n);
+  const lead = top.length ? top[0].value : 0;
+  let rank = 0;
+  return top.map((r, i) => {
+    if (i === 0 || r.value !== top[i - 1].value) rank = i + 1;
+    return { member: r.member, value: r.value, rank, share: lead > 0 ? r.value / lead : 0 };
+  });
+}
+
+// Instances (most kills first) -> bosses (most kills first) -> members with their counts.
+export function bossBoard(members) {
+  const inst = new Map();
+  for (const m of members || []) {
+    for (const b of (m.stats && m.stats.bosses) || []) {
+      const count = b.count || 0;
+      if (!inst.has(b.instance)) inst.set(b.instance, { instance: b.instance, total: 0, bosses: new Map() });
+      const i = inst.get(b.instance);
+      if (!i.bosses.has(b.name)) i.bosses.set(b.name, { name: b.name, total: 0, members: [] });
+      const boss = i.bosses.get(b.name);
+      boss.total += count;
+      i.total += count;
+      boss.members.push({ member: m, count });
+    }
+  }
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name));
+  return [...inst.values()].map((i) => ({
+    instance: i.instance,
+    total: i.total,
+    bosses: [...i.bosses.values()].map((b) => ({
+      ...b,
+      members: b.members.sort((x, y) => y.count - x.count || memberName(x.member).localeCompare(memberName(y.member))),
+    })).sort((a, b) => b.total - a.total || byName(a, b)),
+  })).sort((a, b) => b.total - a.total || a.instance.localeCompare(b.instance));
+}
+
 export function isStale(meta, now = Date.now()) {
   if (!meta || meta.lastSuccessAt == null) return true;
   return now - meta.lastSuccessAt > 2 * (meta.refreshMinutes || 60) * 60 * 1000;
