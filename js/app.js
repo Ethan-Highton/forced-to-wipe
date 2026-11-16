@@ -2,7 +2,7 @@ import { el, errorState, skeleton } from './dom.js';
 import { getConfig, getState, postRefresh } from './api.js';
 import { startRouter } from './router.js';
 import { isStale } from './derive.js';
-import { formatCountdown, readableTextColor, relativeTime } from './format.js';
+import { formatCountdown, relativeTime } from './format.js';
 import { renderRoster } from './views/roster.js';
 import { renderStats } from './views/stats.js';
 import { renderLevelups } from './views/levelups.js';
@@ -21,13 +21,10 @@ let renderToken = 0;
 
 function applyBranding() {
   const b = ctx.config.branding || {};
-  const accent = /^#[0-9a-f]{6}$/i.test(b.accent || '') ? b.accent : '#e0a43a';
-  document.documentElement.style.setProperty('--accent', accent);
-  document.documentElement.style.setProperty('--on-accent', readableTextColor(accent));
+  // The ember accent is part of the design; only the title and logo are configurable.
   const title = b.title || 'Forced to Wipe';
   document.title = title;
   $('brand-title').textContent = title;
-  $('brand-sub').textContent = ctx.config.guildName || '';
   const logo = $('brand-logo');
   if (b.logo) { logo.src = b.logo; logo.hidden = false; } else logo.hidden = true;
 }
@@ -62,22 +59,26 @@ function renderChrome() {
   } else {
     banner.hidden = true;
   }
-  $('updated').textContent = meta && meta.refreshedAt != null
-    ? `Updated ${relativeTime(meta.refreshedAt)} · game data lags 20–40 min`
-    : 'Not updated yet · game data lags 20–40 min';
+  const updated = meta && meta.refreshedAt != null ? `Updated ${relativeTime(meta.refreshedAt)}` : 'Not updated yet';
+  const count = ctx.state && ctx.state.members ? ctx.state.members.length : null;
+  const facts = ['Horde', 'PvP', count == null ? null : `${count} members`].filter(Boolean).join(' · ');
+  const sub = $('brand-sub');
+  sub.textContent = facts;
+  sub.append(el('span', { class: 'desk-only', text: ` · ${updated} · data lags 20–40 min` }));
+  $('updated').textContent = `${updated} · data lags 20–40 min`;
   if (meta && meta.cooldownSec > 0 && !cooldownTimer) startCooldown(meta.cooldownSec);
 }
 
 function renderRoute() {
   const token = ++renderToken;
   view.replaceChildren();
-  for (const a of document.querySelectorAll('.tabbar a')) {
+  for (const a of document.querySelectorAll('nav a[data-route]')) {
     const on = a.dataset.route === route.name || (route.name === 'member' && a.dataset.route === 'roster');
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
   window.scrollTo(0, 0);
   // Level-ups load their own data, so they work even if state failed.
-  if (route.name === 'levelups') { renderLevelups(view); return; }
+  if (route.name === 'levelups') { renderLevelups(view, ctx); return; }
   if (ctx.loadError) {
     view.append(errorState(ctx.loadError.message, loadAll));
     return;
@@ -158,6 +159,11 @@ btn.addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+// The export menu closes on an outside click or Escape.
+const exportMenu = $('export-menu');
+document.addEventListener('click', (e) => { if (!exportMenu.contains(e.target)) exportMenu.open = false; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') exportMenu.open = false; });
 
 startRouter((r) => {
   route = r;
