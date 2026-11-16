@@ -1,0 +1,18 @@
+/* Class colours are fills (stripe, swatch) only. The class name is always printed as text. */
+[data-class] { --cls: #7a8499; }
+[data-class="1"] { --cls: #c69b6d; }
+[data-class="2"] { --cls: #f48cba; }
+[data-class="3"] { --cls: #aad372; }
+[data-class="4"] { --cls: #fff468; }
+[data-class="5"] { --cls: #ffffff; }
+[data-class="6"] { --cls: #c41e3a; }
+[data-class="7"] { --cls: #0070dd; }
+[data-class="8"] { --cls: #3fc7eb; }
+[data-class="9"] { --cls: #8788ee; }
+[data-class="10"] { --cls: #00ff98; }
+[data-class="11"] { --cls: #ff7c0a; }
+[data-class="12"] { --cls: #a330c9; }
+[data-class="13"] { --cls: #33937f; }
+
+.stripe { background: var(--cls); }
+.swatch { background: var(--cls); }
