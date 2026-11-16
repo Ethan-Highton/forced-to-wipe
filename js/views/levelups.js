@@ -63,7 +63,14 @@ export async function renderLevelups(root, ctx) {
   if (!entries.length) {
     root.replaceChildren(
       el('h2', { class: 'rule-title', text: 'Level-ups' }),
-      el('p', { class: 'calm', text: `Nobody has levelled since tracking began. Level-ups are recorded from the first refresh. ${nextRefreshText(ctx)}` }));
+      el('div', { class: 'milk-empty' },
+        el('p', { class: 'calm', text: `Nobody has levelled since tracking began. The milk has perished. Level-ups are recorded from the first refresh. ${nextRefreshText(ctx)}` }),
+        el('figure', { class: 'milk' },
+          el('img', {
+            src: 'css/img/perished-milk.webp', width: '1024', height: '574', loading: 'lazy',
+            alt: 'A man in a mould-covered room holding up a tall glass of curdled milk',
+          }),
+          el('figcaption', { class: 'small muted', text: 'Level-ups, pending.' }))));
     return;
   }
 

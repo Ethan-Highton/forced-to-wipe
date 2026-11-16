@@ -242,3 +242,10 @@ th[aria-sort] .th-btn { color: var(--text); }
 
 @media (min-width: 880px) and (max-width: 1239.98px) { .col-up { display: none; } }
 @media (min-width: 880px) and (max-width: 1099.98px) { .col-rank, .col-talents { display: none; } }
+
+/* Level-ups empty state: the perished milk. */
+.milk-empty { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.milk { margin: 0; max-width: 460px; }
+.milk img { display: block; width: 100%; height: auto; border-radius: var(--radius); border: 1px solid var(--line); filter: saturate(0.85) contrast(1.05); }
+.milk figcaption { margin-top: 8px; }
+@media (min-width: 880px) { .milk-empty { grid-template-columns: minmax(0, 1fr) 460px; gap: 40px; } }
