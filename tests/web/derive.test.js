@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activity, averageLevel, highestMember, latestLevelUp, levelsGained, bgTotals, isStale, filterMembers } from '../../js/derive.js';
+import { activity, averageLevel, highestMember, latestLevelUp, levelsGained, bgTotals, isStale, filterMembers, perLevel, guildTotals, leaders, bossBoard } from '../../js/derive.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1_800_000_000_000;
@@ -57,6 +57,70 @@ test('isStale uses twice the refresh interval', () => {
   assert.equal(isStale(meta(119 * 60000), NOW), false);
   assert.equal(isStale(meta(121 * 60000), NOW), true);
   assert.equal(isStale({ lastSuccessAt: null, refreshMinutes: 60 }, NOW), true);
+});
+
+const sm = (name, level, stats, pvp) => ({ name, surname: '', level, classId: 8, stats, pvp });
+const st = (deaths, bosses = []) => ({ deaths, quests: deaths * 10, dungeons: 1, bossKills: bosses.reduce((s, b) => s + b.count, 0), bosses });
+
+test('perLevel guards against missing values and zero level', () => {
+  assert.equal(perLevel(10, 4), 2.5);
+  assert.equal(perLevel(0, 4), 0);
+  assert.equal(perLevel(10, 0), null);
+  assert.equal(perLevel(null, 5), null);
+  assert.equal(perLevel(undefined, 5), null);
+});
+
+test('guildTotals skips members without stats or pvp', () => {
+  const t = guildTotals([
+    sm('a', 20, st(3), { hk: 10, bgs: [{ played: 4, won: 3 }] }),
+    sm('b', 20, st(5), { hk: 5, bgs: [{ played: 6, won: 1 }] }),
+    sm('c', 5, null, null),
+  ]);
+  assert.equal(t.deaths, 8);
+  assert.equal(t.quests, 80);
+  assert.equal(t.hk, 15);
+  assert.deepEqual([t.bgPlayed, t.bgWon, t.bgLost, t.bgWinRate], [10, 4, 6, 0.4]);
+  assert.equal(t.withStats, 2);
+  const empty = guildTotals([]);
+  assert.equal(empty.bgWinRate, null);
+  assert.equal(empty.deaths, 0);
+});
+
+test('leaders ranks ties together and keeps name order', () => {
+  const list = [sm('Cy', 20, st(4)), sm('Al', 20, st(4)), sm('Bo', 20, st(2)), sm('Di', 20, st(8)), sm('Ed', 5, null)];
+  const r = leaders(list, (m) => m.stats && m.stats.deaths, 3);
+  assert.deepEqual(r.map((x) => x.member.name), ['Di', 'Al', 'Cy']);
+  assert.deepEqual(r.map((x) => x.rank), [1, 2, 2]);
+  assert.deepEqual(r.map((x) => x.share), [1, 0.5, 0.5]);
+});
+
+test('leaders handles all-zero values and empty input', () => {
+  const r = leaders([sm('a', 20, st(0)), sm('b', 20, st(0))], (m) => m.stats.deaths, 5);
+  assert.deepEqual(r.map((x) => x.share), [0, 0]);
+  assert.deepEqual(r.map((x) => x.rank), [1, 1]);
+  assert.deepEqual(leaders([], () => 1), []);
+  assert.deepEqual(leaders(null, () => 1), []);
+});
+
+test('leaders min-played filter excludes small samples and missing pvp', () => {
+  const pv = (played, won) => ({ hk: 0, bgs: [{ played, won }] });
+  const list = [sm('a', 20, st(1), pv(1, 1)), sm('b', 20, st(1), pv(4, 2)), sm('c', 20, st(1), null), sm('d', 20, st(1), pv(2, 2))];
+  const rate = (m) => (m.pvp ? bgTotals(m.pvp).winRate : null);
+  const r = leaders(list, rate, 5, { min: 2, played: (m) => bgTotals(m.pvp).played });
+  assert.deepEqual(r.map((x) => x.member.name), ['d', 'b']);
+});
+
+test('bossBoard groups by instance with per-member counts', () => {
+  const a = sm('Al', 20, st(1, [{ name: 'Bazzalan', instance: 'Ragefire Chasm', count: 3 }, { name: 'Rath', instance: 'Lordaeron', count: 1 }]));
+  const b = sm('Bo', 20, st(1, [{ name: 'Bazzalan', instance: 'Ragefire Chasm', count: 5 }]));
+  const c = sm('Cy', 5, null);
+  const board = bossBoard([a, b, c]);
+  assert.deepEqual(board.map((i) => [i.instance, i.total]), [['Ragefire Chasm', 8], ['Lordaeron', 1]]);
+  const boss = board[0].bosses[0];
+  assert.equal(boss.name, 'Bazzalan');
+  assert.equal(boss.total, 8);
+  assert.deepEqual(boss.members.map((x) => [x.member.name, x.count]), [['Bo', 5], ['Al', 3]]);
+  assert.deepEqual(bossBoard([c]), []);
 });
 
 test('filterMembers combines search, class and activity', () => {
