@@ -15,7 +15,7 @@ const clientSecret = defineSecret('BNET_CLIENT_SECRET');
 async function options() {
   const { normalizeConfig, createLogger } = await import(new URL('./server/config.js', import.meta.url).href);
   const raw = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''));
-  const credentials = { clientId: clientId.value(), clientSecret: clientSecret.value() };
+  const credentials = { clientId: clientId.value().trim(), clientSecret: clientSecret.value().trim() };
   return {
     config: normalizeConfig(raw, process.env),
     credentials,
