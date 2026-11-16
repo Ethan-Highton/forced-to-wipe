@@ -114,8 +114,8 @@
 .ilvl { display: flex; flex-direction: column; gap: 5px; width: 84px; }
 .ilvl-n { line-height: 1; }
 .profs { display: flex; gap: 16px; }
-.prof { display: flex; flex-direction: column; gap: 4px; width: 112px; }
-.prof-line { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-xs); line-height: 1.2; }
+.prof { display: flex; flex-direction: column; gap: 4px; width: 150px; }
+.prof-line { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font-size: var(--fs-xs); line-height: 1.2; }
 .prof-n { color: var(--muted); }
 .talents { display: flex; flex-direction: column; gap: 2px; }
 .talent-main { font-weight: 600; }
