@@ -10,7 +10,7 @@
   "basePath": "",
   "branding": {
     "title": "Forced to Wipe",
-    "accent": "#b8860b",
+    "accent": "#ea5a2c",
     "logo": ""
   },
   "activityDays": { "quiet": 3, "inactive": 14 },
