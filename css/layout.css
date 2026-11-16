@@ -62,10 +62,11 @@
 @media (min-width: 880px) {
   .topbar, .view, .footer, .banner { max-width: 1240px; }
   .topbar, .view { padding-left: 28px; padding-right: 28px; }
-  .strip { grid-template-columns: repeat(4, 1fr); }
-  .controls { grid-template-columns: 2fr 1fr 1fr 1fr 1fr; }
-  .controls input[type="search"] { grid-column: auto; }
-  .card-list {
+  /* .view prefix: components.css loads later with equal specificity and would otherwise win. */
+  .view .strip { grid-template-columns: repeat(4, 1fr); }
+  .view .controls { grid-template-columns: 2fr 1fr 1fr 1fr 1fr; }
+  .view .controls input[type="search"] { grid-column: auto; }
+  .view .card-list {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 14px; align-items: start;
   }
