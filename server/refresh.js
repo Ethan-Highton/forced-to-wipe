@@ -6,6 +6,7 @@ import {
 
 const CONCURRENCY = 3;
 const MIN_DETAIL_LEVEL = 10;
+const MAX_NOTIFIED = 200;
 
 // Sections fetched after the profile; each maps to a Member key and a parser.
 const SUB_SECTIONS = [
@@ -88,7 +89,7 @@ const historyPoint = (m, t) => ({
 const sameValues = (a, b) => ['level', 'xp', 'ilvl', 'deaths', 'quests', 'hk'].every((k) => a[k] === b[k]);
 
 export function createRefresher({
-  config, store, blizzard, log = () => {}, now = Date.now,
+  config, store, blizzard, log = () => {}, now = Date.now, onEvents = null,
   setTimer = setTimeout, clearTimer = clearTimeout,
 }) {
   let running = false;
@@ -153,8 +154,34 @@ export function createRefresher({
       guild: { name: roster.guildName ?? config.guildName, memberCount: members.length },
       members,
     });
-    store.write('meta.json', { ...meta, lastAttemptAt: t, lastSuccessAt: t, consecutiveFailures: 0, seeded: true });
+    // Level-ups already announced are skipped; the ids are saved before sending so a retry never repeats them.
+    const notified = meta.notifiedLevelups ?? [];
+    const toAnnounce = onEvents && meta.seeded ? diff.levelups.filter((e) => !notified.includes(e.id)) : [];
+    store.write('meta.json', {
+      ...meta, lastAttemptAt: t, lastSuccessAt: t, consecutiveFailures: 0, seeded: true,
+      ...(onEvents && { notifiedLevelups: [...notified, ...toAnnounce.map((e) => e.id)].slice(-MAX_NOTIFIED) }),
+    });
     log(`Refresh ${refreshStatus}: ${members.length} members, ${fresh.length} level-ups, ${errors.length} errors`);
+    if (onEvents && meta.seeded) {
+      const byId = new Map(members.map((m) => [m.id, m]));
+      const info = (m) => ({ name: `${m.name} ${m.surname}`.trim(), classId: m.classId, className: m.className, level: m.level });
+      const events = {
+        guildName: roster.guildName ?? config.guildName,
+        levelups: toAnnounce.map((e) => ({ ...e, ...(byId.get(e.charId) && { classId: byId.get(e.charId).classId, className: byId.get(e.charId).className }) })),
+        joined: diff.joined.map((id) => info(byId.get(id))),
+        left: diff.left.map((id) => info(prevMap.get(id) ?? { ...diff.members[id], level: null })),
+        deaths: members.flatMap((m) => {
+          const from = prevMap.get(m.id)?.stats?.deaths;
+          const to = m.stats?.deaths;
+          return from != null && to != null && to > from ? [{ ...info(m), from, to }] : [];
+        }),
+      };
+      try {
+        await onEvents(events);
+      } catch (err) {
+        log(`Notification failed: ${err.message}`);
+      }
+    }
     return { status: refreshStatus, levelups: fresh.length, errors };
   }
 

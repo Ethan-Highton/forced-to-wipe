@@ -10,17 +10,20 @@ initializeApp();
 
 const clientId = defineString('BNET_CLIENT_ID');
 const clientSecret = defineSecret('BNET_CLIENT_SECRET');
+const discordWebhookUrl = defineString('DISCORD_WEBHOOK_URL', { default: '' });
 
 // Resolved lazily so deploy-time analysis does not need config.json or the synced server/ copy.
 async function options() {
   const { normalizeConfig, createLogger } = await import(new URL('./server/config.js', import.meta.url).href);
   const raw = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''));
+  const webhookUrl = discordWebhookUrl.value().trim(); // empty = notifications off
   const credentials = { clientId: clientId.value().trim(), clientSecret: clientSecret.value().trim() };
   return {
     config: normalizeConfig(raw, process.env),
     credentials,
     bucket: getStorage().bucket(),
-    log: createLogger([credentials.clientSecret]),
+    webhookUrl,
+    log: createLogger([credentials.clientSecret, webhookUrl]),
   };
 }
 
