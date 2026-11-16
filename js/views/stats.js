@@ -1,78 +1,81 @@
-import { el, emptyState } from '../dom.js';
-import { bgTotals, guildTotals, leaders, bossBoard, perLevel } from '../derive.js';
+import { el, svg, emptyState } from '../dom.js';
+import { bgTotals, leaders, bossBoard, perLevel } from '../derive.js';
 import { formatNumber, formatPercent, fullName } from '../format.js';
+import { heatClasses, columnBest, compareValues, recordHolders, bossRows, firstName } from '../stats-model.js';
+import { meterClass } from '../member-model.js';
 
 const sort = { key: 'name', dir: 1 };
 
-const oneDecimal = (n) => (n == null ? '–' : n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+const DASH = '—';
+const oneDecimal = (n) => (n == null ? DASH : n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+const num = (n) => (n == null ? DASH : formatNumber(n));
+const pct = (n) => (n == null ? DASH : formatPercent(n));
 const deaths = (m) => m.stats && m.stats.deaths;
 const quests = (m) => m.stats && m.stats.quests;
+const dungeons = (m) => m.stats && m.stats.dungeons;
+const bossKills = (m) => m.stats && m.stats.bossKills;
+const hk = (m) => m.pvp && m.pvp.hk;
+const played = (m) => m.pvp && bgTotals(m.pvp).played;
 
+const GROUPS = ['Deaths', 'Quests', 'Dungeons & bosses', 'PvP'];
 const COLUMNS = [
   { key: 'name', label: 'Member', text: true, value: (m) => fullName(m) },
-  { key: 'deaths', label: 'Deaths', value: deaths },
-  { key: 'deathsPerLevel', label: 'Deaths / level', fmt: oneDecimal, value: (m) => m.stats && perLevel(m.stats.deaths, m.level) },
-  { key: 'quests', label: 'Quests', value: quests },
-  { key: 'questsPerLevel', label: 'Quests / level', fmt: oneDecimal, value: (m) => m.stats && perLevel(m.stats.quests, m.level) },
-  { key: 'dungeons', label: 'Dungeons', value: (m) => m.stats && m.stats.dungeons },
-  { key: 'bossKills', label: 'Boss kills', value: (m) => m.stats && m.stats.bossKills },
-  { key: 'hk', label: 'HK', value: (m) => m.pvp && m.pvp.hk },
-  { key: 'played', label: 'BGs played', value: (m) => m.pvp && bgTotals(m.pvp).played },
-  { key: 'won', label: 'BGs won', value: (m) => m.pvp && bgTotals(m.pvp).won },
-  { key: 'winPct', label: 'Win %', fmt: formatPercent, value: (m) => m.pvp && bgTotals(m.pvp).winRate },
+  { key: 'deaths', group: 0, label: 'Total', sr: 'Deaths ', value: deaths },
+  { key: 'deathsPerLevel', group: 0, label: 'Per level', sr: 'Deaths ', fmt: oneDecimal, value: (m) => m.stats && perLevel(m.stats.deaths, m.level) },
+  { key: 'quests', group: 1, label: 'Total', sr: 'Quests ', value: quests },
+  { key: 'questsPerLevel', group: 1, label: 'Per level', sr: 'Quests ', fmt: oneDecimal, value: (m) => m.stats && perLevel(m.stats.quests, m.level) },
+  { key: 'dungeons', group: 2, label: 'Dungeons', value: dungeons },
+  { key: 'bossKills', group: 2, label: 'Boss kills', value: bossKills },
+  { key: 'hk', group: 3, label: 'HK', value: hk },
+  { key: 'played', group: 3, label: 'Played', sr: 'Battlegrounds ', value: played },
+  { key: 'won', group: 3, label: 'Won', sr: 'Battlegrounds ', value: (m) => m.pvp && bgTotals(m.pvp).won },
+  { key: 'winPct', group: 3, label: 'Win %', fmt: pct, value: (m) => m.pvp && bgTotals(m.pvp).winRate },
 ];
 
-// Bar widths are CSS classes (.w0 ... .w100 in steps of 5): inline styles are blocked by the CSP.
-function widthClass(ratio) {
-  const r = Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0;
-  return `w${Math.round(r * 20) * 5}`;
+// Reveal motion lives in js/motion.js; the page works without it.
+async function reveal(root, selector) {
+  try {
+    const mod = await import('../motion.js');
+    if (mod && typeof mod.revealChildren === 'function') mod.revealChildren(root, selector);
+  } catch { /* motion is optional */ }
 }
 
 function swatch(m) {
   return el('span', { class: 'swatch', 'data-class': String(m.classId), 'aria-hidden': 'true' });
 }
 
-function compare(col) {
-  return (a, b) => {
-    const x = col.value(a);
-    const y = col.value(b);
-    // Members without data always sink to the bottom.
-    if (x == null && y == null) return 0;
-    if (x == null) return 1;
-    if (y == null) return -1;
-    return (col.text ? String(x).localeCompare(String(y)) : x - y) * sort.dir;
-  };
+function chevron(cls) {
+  return svg('svg', { class: cls, viewBox: '0 0 10 10', width: '10', height: '10', 'aria-hidden': 'true', focusable: 'false' },
+    svg('path', { d: 'M2 6.5 5 3.5 8 6.5', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.6' }));
 }
 
-function bossRow(m, colspan) {
-  const bosses = (m.stats && m.stats.bosses) || [];
-  const content = bosses.length
-    ? el('ul', { class: 'boss-list' }, ...bosses.map((b) => el('li', {},
-      el('span', { text: `${b.name} ` }), el('span', { class: 'muted', text: `(${b.instance})` }),
-      el('strong', { text: ` × ${b.count}` }))))
-    : el('p', { class: 'muted', text: m.stats ? 'No boss kills recorded' : 'Details appear at level 10' });
-  return el('tr', { class: 'detail-row' }, el('td', { colspan: String(colspan) }, content));
-}
+const memberHref = (m) => `#/member/${encodeURIComponent(m.id)}`;
 
-// ---- 1. totals -----------------------------------------------------------
+// ---- 1. records ----------------------------------------------------------
 
-function totalsStrip(members) {
-  const t = guildTotals(members);
-  const bg = t.bgPlayed
-    ? `${formatNumber(t.bgWon)}-${formatNumber(t.bgLost)} (${formatPercent(t.bgWinRate)})`
-    : '–';
-  const tile = (label, value, sub) => el('div', { class: 'tile' },
-    el('span', { class: 'tile-label', text: label }),
-    el('span', { class: 'tile-value', text: value }),
-    sub ? el('span', { class: 'tile-sub', text: sub }) : null);
-  return el('section', { 'aria-label': 'Guild totals' },
-    el('div', { class: 'strip' },
-      tile('Deaths', formatNumber(t.deaths), `${t.withStats} members`),
-      tile('Quests', formatNumber(t.quests)),
-      tile('Dungeon runs', formatNumber(t.dungeons)),
-      tile('Boss kills', formatNumber(t.bossKills)),
-      tile('Honorable kills', formatNumber(t.hk), `${t.withPvp} members`),
-      tile('Battlegrounds', bg, 'wins-losses (win rate)')));
+const RECORDS = [
+  { key: 'deaths', label: 'Deaths', value: deaths },
+  { key: 'quests', label: 'Quests', value: quests },
+  { key: 'dungeons', label: 'Dungeon runs', value: dungeons },
+  { key: 'bossKills', label: 'Boss kills', value: bossKills },
+  { key: 'hk', label: 'Honorable kills', value: hk },
+  { key: 'played', label: 'Battlegrounds', value: played },
+];
+
+function recordsRow(members) {
+  const rows = recordHolders(members, RECORDS);
+  return el('dl', { class: 'records rv' }, ...rows.map((r) => {
+    const holder = r.holders.length
+      ? el('dd', { class: 'rec-holder' },
+        el('a', { href: memberHref(r.holders[0]), text: firstName(r.holders[0]) }),
+        ` ${formatNumber(r.value)}`,
+        r.holders.length > 1 ? ` +${r.holders.length - 1} tied` : '')
+      : el('dd', { class: 'rec-holder', text: 'No record yet' });
+    return el('div', { class: 'rec' },
+      el('dt', { text: r.label }),
+      el('dd', { class: 'rec-total', text: formatNumber(r.total) }),
+      holder);
+  }));
 }
 
 // ---- 2. leaderboards -----------------------------------------------------
@@ -80,12 +83,12 @@ function totalsStrip(members) {
 const BOARDS = [
   { title: 'Most deaths', value: deaths },
   { title: 'Most quests', value: quests },
-  { title: 'Most dungeons', value: (m) => m.stats && m.stats.dungeons },
-  { title: 'Most boss kills', value: (m) => m.stats && m.stats.bossKills },
-  { title: 'Most honorable kills', value: (m) => m.pvp && m.pvp.hk },
+  { title: 'Most dungeons', value: dungeons },
+  { title: 'Most boss kills', value: bossKills },
+  { title: 'Most honorable kills', value: hk },
   {
-    title: 'Best battleground win rate',
-    note: 'min. 2 battlegrounds played',
+    title: 'Best BG win rate',
+    note: 'Min. 2 played',
     value: (m) => m.pvp && bgTotals(m.pvp).winRate,
     opts: { min: 2, played: (m) => (m.pvp ? bgTotals(m.pvp).played : 0) },
     fmt: formatPercent,
@@ -97,34 +100,58 @@ function leaderCard(board, members) {
   const rows = leaders(members, board.value, 5, board.opts);
   const fmt = board.fmt || formatNumber;
   const list = rows.length
-    ? el('ol', { class: 'lb-list' }, ...rows.map((r) => el('li', { class: 'lb-row' },
+    ? el('ol', { class: 'lb-list' }, ...rows.map((r) => el('li', { class: r.rank === 1 ? 'lb-row is-first' : 'lb-row' },
       el('span', { class: 'lb-rank', text: String(r.rank) }),
-      el('a', { class: 'lb-name', href: `#/member/${encodeURIComponent(r.member.id)}` }, swatch(r.member), el('span', { text: fullName(r.member) })),
+      el('a', { class: 'lb-name', href: memberHref(r.member) }, swatch(r.member), el('span', { text: fullName(r.member) })),
       el('span', { class: 'lb-value' },
-        el('strong', { text: fmt(r.value) }),
-        board.detail ? el('span', { class: 'muted small', text: ` ${board.detail(r.member)}` }) : null),
+        board.detail ? el('span', { class: 'lb-detail', text: board.detail(r.member) }) : null,
+        el('strong', { text: fmt(r.value) })),
       el('span', { class: 'meter', 'aria-hidden': 'true' },
-        el('span', { class: `bar ${widthClass(r.share)}`, 'data-class': String(r.member.classId) })))))
-    : el('p', { class: 'muted small', text: 'Nobody qualifies yet.' });
+        el('span', { class: `bar ${meterClass(r.share)}`, 'data-class': String(r.member.classId) })))))
+    : el('p', { class: 'muted small', text: 'Nobody has qualified yet.' });
   return el('article', { class: 'lb-card' },
-    el('h3', { class: 'lb-title', text: board.title }),
-    board.note ? el('p', { class: 'muted small', text: board.note }) : null,
+    el('h3', { class: 'lb-title' }, board.title, board.note ? el('span', { class: 'lb-note', text: board.note }) : null),
     list);
 }
 
-// ---- 3. table ------------------------------------------------------------
+// ---- 3. matrix -----------------------------------------------------------
+
+function detailRow(m, colspan) {
+  const bosses = (m.stats && m.stats.bosses) || [];
+  const list = bosses.length
+    ? el('ul', { class: 'detail-bosses' }, ...bosses.map((b) => el('li', {},
+      el('span', { class: 'db-name', text: b.name }),
+      el('span', { class: 'db-inst', text: b.instance }),
+      el('span', { class: 'db-count', text: `×${b.count}` }))))
+    : el('p', { class: 'muted small', text: m.stats ? 'No boss kills yet.' : 'Boss details unlock at level 10.' });
+  return el('tr', { class: 'detail-row' }, el('td', { colspan: String(colspan) },
+    el('div', { class: 'detail-inner' },
+      el('p', { class: 'detail-head' },
+        el('span', { class: 'muted', text: `${m.className} · level ${m.level}` }),
+        el('a', { class: 'detail-link', href: memberHref(m), text: 'Full profile' })),
+      list)));
+}
 
 function statsTable(members) {
-  const wrap = el('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Member statistics' });
+  const wrap = el('div', { class: 'table-wrap matrix-wrap', tabindex: '0', role: 'region', 'aria-label': 'Member statistics' });
+
+  // Heat and column bests depend only on the data, never on the sort.
+  const heat = COLUMNS.map((c) => {
+    if (c.text) return null;
+    const values = members.map((m) => c.value(m));
+    return { values, classes: heatClasses(values), best: columnBest(values) };
+  });
 
   const paint = () => {
-    const col = COLUMNS.find((c) => c.key === sort.key);
-    const rows = [...members].sort(compare(col));
-    const maxes = COLUMNS.map((c) => (c.text ? 0 : Math.max(0, ...members.map((m) => c.value(m) || 0))));
+    const sc = COLUMNS.find((c) => c.key === sort.key);
+    const rows = members.map((m, i) => ({ m, i })).sort((a, b) => compareValues(sc.value(a.m), sc.value(b.m), sort.dir, sc.text));
 
-    const head = el('tr', {}, ...COLUMNS.map((c) => {
+    const sortBtn = (c) => {
       const active = c.key === sort.key;
-      const btn = el('button', { class: 'th-btn', type: 'button', text: c.label });
+      const btn = el('button', { class: 'th-btn', type: 'button' },
+        c.sr ? el('span', { class: 'sr-only', text: c.sr }) : null,
+        el('span', { text: c.label }),
+        active ? chevron(sort.dir === 1 ? 'sort-ico asc' : 'sort-ico desc') : null);
       btn.addEventListener('click', () => {
         sort.dir = active ? -sort.dir : (c.text ? 1 : -1);
         sort.key = c.key;
@@ -132,37 +159,59 @@ function statsTable(members) {
         const again = wrap.querySelector(`th[data-key="${c.key}"] .th-btn`);
         if (again) again.focus();
       });
-      return el('th', {
-        scope: 'col', 'data-key': c.key, class: c.text ? null : 'num',
-        'aria-sort': active ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none',
-      }, btn);
-    }));
+      return btn;
+    };
+    const sortAttr = (c) => ({ 'aria-sort': c.key === sort.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none' });
+
+    const groupRow = el('tr', { class: 'group-row' },
+      el('th', { scope: 'col', rowspan: '2', 'data-key': 'name', class: 'corner', ...sortAttr(COLUMNS[0]) }, sortBtn(COLUMNS[0])),
+      ...GROUPS.map((g, gi) => el('th', {
+        scope: 'colgroup', colspan: String(COLUMNS.filter((c) => c.group === gi).length), class: 'group', text: g,
+      })));
+    const colRow = el('tr', { class: 'col-row' }, ...COLUMNS.slice(1).map((c) =>
+      el('th', { scope: 'col', 'data-key': c.key, class: 'num', ...sortAttr(c) }, sortBtn(c))));
 
     const body = el('tbody');
-    for (const m of rows) {
-      const detail = bossRow(m, COLUMNS.length);
+    for (const { m, i } of rows) {
+      const detail = detailRow(m, COLUMNS.length);
       detail.hidden = true;
-      const tr = el('tr', { class: 'data-row' }, ...COLUMNS.map((c, i) => {
-        const v = c.value(m);
-        if (i === 0) {
-          const btn = el('button', { class: 'row-btn', type: 'button', 'aria-expanded': 'false' },
-            swatch(m), el('span', { text: v }), el('span', { class: 'sr-only', text: ` (${m.className})` }));
-          btn.addEventListener('click', () => {
-            detail.hidden = !detail.hidden;
-            btn.setAttribute('aria-expanded', String(!detail.hidden));
-            tr.classList.toggle('is-open', !detail.hidden);
-          });
-          return el('th', { scope: 'row' }, btn);
+      const btn = el('button', { class: 'row-btn', type: 'button', 'aria-expanded': 'false' },
+        swatch(m), el('span', { class: 'row-name', text: fullName(m) }),
+        el('span', { class: 'sr-only', text: ` (${m.className})` }), chevron('row-ico'));
+      const tr = el('tr', { class: 'data-row' }, el('th', { scope: 'row' }, btn));
+      btn.addEventListener('click', () => {
+        detail.hidden = !detail.hidden;
+        btn.setAttribute('aria-expanded', String(!detail.hidden));
+        tr.classList.toggle('is-open', !detail.hidden);
+      });
+      COLUMNS.forEach((c, ci) => {
+        if (c.text) return;
+        const h = heat[ci];
+        const v = h.values[i];
+        if (v == null || Number.isNaN(v)) {
+          tr.append(el('td', { class: 'num empty', 'data-key': c.key, text: DASH }));
+          return;
         }
-        if (v == null) return el('td', { class: 'num empty', text: '–' });
-        const ratio = maxes[i] > 0 ? v / maxes[i] : 0;
-        return el('td', { class: 'num' },
-          el('span', { class: `bar ${widthClass(ratio)}`, 'aria-hidden': 'true' }),
-          el('span', { class: 'val', text: (c.fmt || formatNumber)(v) }));
-      }));
+        const best = h.best != null && v === h.best && v > 0;
+        tr.append(el('td', { class: `num h${h.classes[i]}${best ? ' best' : ''}`, 'data-key': c.key, text: (c.fmt || num)(v) }));
+      });
       body.append(tr, detail);
     }
-    wrap.replaceChildren(el('table', { class: 'stats-table' }, el('thead', {}, head), body));
+
+    // Crosshair: the row is highlighted by CSS, the column header is tinted here.
+    let hot = null;
+    const setHot = (key) => {
+      if (hot === key) return;
+      hot = key;
+      for (const th of wrap.querySelectorAll('thead th[data-key]')) th.classList.toggle('is-hot', th.dataset.key === key);
+    };
+    body.addEventListener('mouseover', (e) => {
+      const td = e.target.closest ? e.target.closest('td[data-key]') : null;
+      setHot(td ? td.dataset.key : null);
+    });
+    body.addEventListener('mouseleave', () => setHot(null));
+
+    wrap.replaceChildren(el('table', { class: 'stats-table matrix' }, el('thead', {}, groupRow, colRow), body));
   };
 
   paint();
@@ -171,26 +220,37 @@ function statsTable(members) {
 
 // ---- 4. boss board -------------------------------------------------------
 
-function bossCard(inst, index) {
-  const open = index < 3;
-  const bodyId = `boss-inst-${index}`;
-  const btn = el('button', { class: 'boss-toggle', type: 'button', 'aria-expanded': String(open), 'aria-controls': bodyId },
-    el('span', { class: 'boss-inst', text: inst.instance }),
-    el('span', { class: 'boss-total', text: `${formatNumber(inst.total)} kills` }),
-    el('span', { class: 'boss-caret', 'aria-hidden': 'true' }));
-  const body = el('div', { class: 'boss-body', id: bodyId },
-    ...inst.bosses.map((b) => el('div', { class: 'boss-item' },
-      el('div', { class: 'boss-head' },
-        el('span', { class: 'boss-name', text: b.name }),
-        el('span', { class: 'muted small', text: `${formatNumber(b.total)} kills` })),
-      el('ul', { class: 'boss-chips' }, ...b.members.map((x) => el('li', { class: 'chip' },
-        swatch(x.member), el('span', { text: `${fullName(x.member)} × ${formatNumber(x.count)}` })))))));
-  body.hidden = !open;
-  btn.addEventListener('click', () => {
-    body.hidden = !body.hidden;
-    btn.setAttribute('aria-expanded', String(!body.hidden));
-  });
-  return el('article', { class: 'boss-card' }, el('h3', { class: 'boss-card-title' }, btn), body);
+function bossTable(board) {
+  const rows = bossRows(board);
+  const tables = [];
+  let body = null;
+  for (const r of rows) {
+    if (r.type === 'instance') {
+      body = el('tbody', {},
+        el('tr', { class: 'inst-row' },
+          el('th', { scope: 'colgroup', colspan: '3' },
+            el('span', { class: 'inst-name', text: r.instance }),
+            el('span', { class: 'inst-total', text: `${formatNumber(r.total)} ${r.total === 1 ? 'kill' : 'kills'}` }))));
+      tables.push(body);
+    } else {
+      body.append(el('tr', { class: 'boss-row' },
+        el('th', { scope: 'row', class: 'boss-name', text: r.name }),
+        el('td', { class: 'num boss-kills', text: formatNumber(r.total) }),
+        el('td', { class: 'boss-who' }, el('ul', {}, ...r.who.map((w) => el('li', {},
+          swatch(w.member), `${firstName(w.member)} ${formatNumber(w.count)}`))))));
+    }
+  }
+  return el('div', { class: 'boss-wrap' },
+    el('table', { class: 'boss-table' },
+      el('thead', {}, el('tr', {},
+        el('th', { scope: 'col', text: 'Boss' }),
+        el('th', { scope: 'col', class: 'num', text: 'Guild kills' }),
+        el('th', { scope: 'col', text: 'Killed by' }))),
+      ...tables));
+}
+
+function heading(id, text) {
+  return el('h2', { class: 'section-title', id, text });
 }
 
 export function renderStats(root, ctx) {
@@ -200,18 +260,22 @@ export function renderStats(root, ctx) {
     return;
   }
   const board = bossBoard(members);
+  const olderFigures = members.filter((m) => (m.stats && m.stats.stale) || (m.pvp && m.pvp.stale)).length;
   root.append(el('div', { class: 'stats-page' },
-    el('p', { class: 'muted small', text: 'Guild totals, top players and per-member numbers, plus every boss the guild has killed. Click a row for boss details.' }),
-    totalsStrip(members),
-    el('section', { 'aria-labelledby': 'lb-h' },
-      el('h2', { class: 'section-title', id: 'lb-h', text: 'Leaderboards' }),
+    recordsRow(members),
+    el('section', { class: 'rv', 'aria-labelledby': 'lb-h' },
+      heading('lb-h', 'Leaderboards'),
       el('div', { class: 'lb-grid' }, ...BOARDS.map((b) => leaderCard(b, members)))),
-    el('section', { 'aria-labelledby': 'tbl-h' },
-      el('h2', { class: 'section-title', id: 'tbl-h', text: 'All members' }),
-      statsTable(members)),
-    el('section', { 'aria-labelledby': 'boss-h' },
-      el('h2', { class: 'section-title', id: 'boss-h', text: 'Boss board' }),
+    el('section', { class: 'rv', 'aria-labelledby': 'tbl-h' },
+      heading('tbl-h', 'All members'),
+      statsTable(members),
+      olderFigures
+        ? el('p', { class: 'muted small', text: `${olderFigures} ${olderFigures === 1 ? 'member shows' : 'members show'} figures from an earlier refresh.` })
+        : null),
+    el('section', { class: 'rv', 'aria-labelledby': 'boss-h' },
+      heading('boss-h', 'Boss board'),
       board.length
-        ? el('div', { class: 'boss-grid' }, ...board.map(bossCard))
-        : el('p', { class: 'muted', text: 'No boss kills recorded yet.' }))));
+        ? bossTable(board)
+        : el('p', { class: 'muted', text: 'No boss has died to the guild yet.' }))));
+  reveal(root, '.rv');
 }
