@@ -82,7 +82,7 @@ export function loadConfig({ rootDir = ROOT_DIR, processEnv = process.env } = {}
   const file = path.join(rootDir, 'config.json');
   let raw;
   try {
-    raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    raw = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')); // tolerate a BOM from Windows editors
   } catch (err) {
     if (err.code === 'ENOENT') throw new ConfigError('config.json not found');
     throw new ConfigError(`config.json is not valid JSON: ${err.message}`);

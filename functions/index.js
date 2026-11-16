@@ -14,7 +14,7 @@ const clientSecret = defineSecret('BNET_CLIENT_SECRET');
 // Resolved lazily so deploy-time analysis does not need config.json or the synced server/ copy.
 async function options() {
   const { normalizeConfig, createLogger } = await import(new URL('./server/config.js', import.meta.url).href);
-  const raw = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url), 'utf8'));
+  const raw = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''));
   const credentials = { clientId: clientId.value(), clientSecret: clientSecret.value() };
   return {
     config: normalizeConfig(raw, process.env),
@@ -29,5 +29,6 @@ export const api = onRequest({
 }, async (req, res) => handleRequest(await options(), req, res));
 
 export const refreshHourly = onSchedule({
-  region: 'us-central1', schedule: 'every 60 minutes', timeoutSeconds: 300, secrets: [clientSecret],
+  region: 'us-central1', schedule: 'every 15 minutes', timeoutSeconds: 300, secrets: [clientSecret],
 }, async () => { await refreshOnce(await options()); });
+
