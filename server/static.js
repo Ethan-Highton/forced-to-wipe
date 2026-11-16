@@ -12,11 +12,13 @@ const TYPES = {
   '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 
-/** Resolves a request path to a file under root, or null. Only index.html, css/ and js/ qualify. */
+/** Resolves a request path to a file under root, or null. Only index.html, the PWA files, css/ and js/ qualify. */
 export function resolveStaticPath(root, relPath) {
   if (relPath === '/' || relPath === '/index.html') return path.join(root, 'index.html');
+  if (relPath === '/manifest.webmanifest' || relPath === '/sw.js') return path.join(root, relPath.slice(1));
   if (relPath.includes('\0') || relPath.includes('\\')) return null;
   if (!/^\/(css|js)\/./.test(relPath)) return null;
   if (relPath.split('/').includes('..')) return null;

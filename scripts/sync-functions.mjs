@@ -23,6 +23,10 @@ export function sync(root = process.env.FTW_ROOT || path.resolve(path.dirname(fi
   fs.rmSync(pub, { recursive: true, force: true });
   fs.mkdirSync(pub, { recursive: true });
   fs.copyFileSync(path.join(root, 'index.html'), path.join(pub, 'index.html'));
+  // PWA files live at the site root so the service worker can control the whole site.
+  for (const f of ['manifest.webmanifest', 'sw.js']) {
+    if (fs.existsSync(path.join(root, f))) fs.copyFileSync(path.join(root, f), path.join(pub, f));
+  }
   for (const dir of ['css', 'js']) fs.cpSync(path.join(root, dir), path.join(pub, dir), { recursive: true });
 }
 
