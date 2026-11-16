@@ -1,0 +1,18 @@
+{
+  "guildName": "Forced to Wipe",
+  "guildSlug": "forced-to-wipe",
+  "region": "us",
+  "namespace": "profile-forever-us",
+  "locale": "en_US",
+  "refreshMinutes": 60,
+  "port": 8810,
+  "host": "0.0.0.0",
+  "basePath": "",
+  "branding": {
+    "title": "Forced to Wipe",
+    "accent": "#b8860b",
+    "logo": ""
+  },
+  "activityDays": { "quiet": 3, "inactive": 14 },
+  "xpTable": true
+}
