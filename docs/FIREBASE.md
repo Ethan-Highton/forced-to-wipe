@@ -12,3 +12,21 @@ Hosting serves the UI, Cloud Functions serve `/api/**` and the hourly refresh, C
 8. In the Hosting console, add your custom domain
 
 The first scheduled run (within the hour) seeds the data; `ACCESS_CODE` is not supported in this mode.
+
+## Discord notifications
+
+Optional. Create a webhook in your Discord channel (Channel settings > Integrations > Webhooks) and put it in `functions/.env`:
+
+```
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/<id>/<token>
+```
+
+Leave it empty (or unset) to keep notifications off; the deploy works either way. The URL is a secret: it is never logged or returned by the API, so do not commit `functions/.env`. Only `https://discord.com/api/webhooks/` and `https://discordapp.com/api/webhooks/` URLs are accepted.
+
+By default level-ups, joins and leaves are announced, one batched message per refresh. The first (seeding) run is silent. Tune it in `config.json`:
+
+```json
+"notify": { "events": ["levelups", "joins", "leaves", "deaths"], "minDeaths": 3 }
+```
+
+`deaths` is off unless listed; it fires when a member's total deaths rise by at least `minDeaths` between refreshes.

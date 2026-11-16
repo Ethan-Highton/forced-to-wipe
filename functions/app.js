@@ -10,14 +10,16 @@ async function server(name) {
   }
 }
 
-const [{ createMemoryStore }, { createBlizzard }, { createRefresher }, { createRefreshLimiter }, { createHandler }] =
-  await Promise.all(['store-memory.js', 'blizzard.js', 'refresh.js', 'ratelimit.js', 'routes.js'].map(server));
+const [{ createMemoryStore }, { createBlizzard }, { createRefresher }, { createRefreshLimiter }, { createHandler }, { createNotifier }] =
+  await Promise.all(['store-memory.js', 'blizzard.js', 'refresh.js', 'ratelimit.js', 'routes.js', 'notify.js'].map(server));
 
 /** Loads all docs from the bucket and wires a fresh stack on them. */
-async function open({ config, credentials, bucket, log, fetchImpl, sleep, now }) {
+async function open({ config, credentials, bucket, log, fetchImpl, sleep, now, webhookUrl = '', notifyFetch }) {
   const store = createMemoryStore(await loadDocs(bucket, log), log);
   const blizzard = createBlizzard({ config, credentials, fetchImpl, sleep, log, now });
-  const refresher = createRefresher({ config, store, blizzard, log, now });
+  const notifier = createNotifier({ url: webhookUrl, fetchImpl: notifyFetch, log, config });
+  // refresh.js awaits onEvents, so the notification finishes before the function returns.
+  const refresher = createRefresher({ config, store, blizzard, log, now, onEvents: notifier.enabled ? notifier.notify : null });
   const flush = async () => {
     const dirty = store.getDirty();
     await saveDocs(bucket, dirty);

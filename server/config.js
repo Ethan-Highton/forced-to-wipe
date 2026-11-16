@@ -70,6 +70,10 @@ export function normalizeConfig(raw, env = {}, rootDir = ROOT_DIR) {
       inactive: Number(raw.activityDays?.inactive) || 14,
     },
     xpTable: raw.xpTable !== false,
+    notify: {
+      events: Array.isArray(raw.notify?.events) ? raw.notify.events.map(String) : ['levelups', 'joins', 'leaves'],
+      minDeaths: Math.max(1, Math.floor(Number(raw.notify?.minDeaths)) || 3),
+    },
     dataDir: path.resolve(rootDir, raw.dataDir || 'data'),
   };
 }
@@ -87,12 +91,12 @@ export function loadConfig({ rootDir = ROOT_DIR, processEnv = process.env } = {}
     if (err.code === 'ENOENT') throw new ConfigError('config.json not found');
     throw new ConfigError(`config.json is not valid JSON: ${err.message}`);
   }
-  const env = { ...readEnvFile(path.join(rootDir, '.env')), ...pick(processEnv, ['BNET_CLIENT_ID', 'BNET_CLIENT_SECRET', 'BNET_REGION', 'ACCESS_CODE']) };
+  const env = { ...readEnvFile(path.join(rootDir, '.env')), ...pick(processEnv, ['BNET_CLIENT_ID', 'BNET_CLIENT_SECRET', 'BNET_REGION', 'ACCESS_CODE', 'DISCORD_WEBHOOK_URL']) };
   const config = normalizeConfig(raw, env, rootDir);
   const credentials = env.BNET_CLIENT_ID && env.BNET_CLIENT_SECRET
     ? { clientId: env.BNET_CLIENT_ID, clientSecret: env.BNET_CLIENT_SECRET }
     : null;
-  return { config, credentials, accessCode: env.ACCESS_CODE || '' };
+  return { config, credentials, accessCode: env.ACCESS_CODE || '', webhookUrl: env.DISCORD_WEBHOOK_URL || '' };
 }
 
 function pick(obj, keys) {
