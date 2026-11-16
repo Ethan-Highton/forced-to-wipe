@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { makeFetch, makeRoster, makeStack, readRaw, json } from './helpers.js';
 
 const FILES = ['current.json', 'members.json', 'levelups.json'];
+// Copy only files that exist; writing null would create files the real code never made.
+const seed = (to, from) => FILES.forEach((f) => { const d = from.read(f, null); if (d !== null) to.write(f, d); });
 const snapshot = (store) => FILES.map((f) => readRaw(store, f));
 const isSection = (url, name) => url.includes(`/${name}?`);
 
@@ -76,7 +78,7 @@ test('roster failure leaves data files untouched', async () => {
   const before = snapshot(s.store);
   const broken = makeFetch({ hook: (_u, _i, kind) => (kind === 'roster' ? new Response('', { status: 503 }) : undefined) });
   const s2 = makeStack({ fetchImpl: broken });
-  FILES.forEach((f, i) => s2.store.write(f, JSON.parse(before[i]).data));
+  seed(s2.store, s.store);
   s2.store.write('meta.json', s.store.readMeta());
   const raw = snapshot(s2.store);
   const result = await s2.refresher.run();
@@ -91,12 +93,12 @@ test('empty roster and level decrease reject the cycle', async () => {
   const raw = snapshot(s.store);
 
   const empty = makeStack({ fetchImpl: makeFetch({ roster: { guild: { name: 'x' }, members: [] } }) });
-  FILES.forEach((f) => empty.store.write(f, s.store.read(f, null)));
+  seed(empty.store, s.store);
   assert.equal((await empty.refresher.run()).status, 'failed');
   assert.deepEqual(snapshot(empty.store), snapshot(s.store));
 
   const lower = makeStack({ fetchImpl: makeFetch({ roster: makeRoster(['Jeezus', 'Carlos'], { Carlos: 30 }) }) });
-  FILES.forEach((f) => lower.store.write(f, s.store.read(f, null)));
+  seed(lower.store, s.store);
   const result = await lower.refresher.run();
   assert.equal(result.status, 'failed');
   assert.match(result.reason, /level decreased/);
@@ -109,7 +111,7 @@ test('3 consecutive 429s abort the cycle and keep last good data', async () => {
   const raw = snapshot(s.store);
   const limited = makeFetch({ hook: (_u, _i, kind) => (kind === 'character' ? new Response('', { status: 429, headers: { 'Retry-After': '1' } }) : undefined) });
   const s2 = makeStack({ fetchImpl: limited });
-  FILES.forEach((f) => s2.store.write(f, s.store.read(f, null)));
+  seed(s2.store, s.store);
   s2.store.write('meta.json', s.store.readMeta());
   const result = await s2.refresher.run();
   assert.equal(result.status, 'failed');
