@@ -14,5 +14,7 @@
 [data-class="12"] { --cls: #a330c9; }
 [data-class="13"] { --cls: #33937f; }
 
+/* Fills only: the square swatch, the composition bar segments, meter fills. */
 .stripe { background: var(--cls); }
 .swatch { background: var(--cls); }
+.compbar rect { fill: var(--cls); }

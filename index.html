@@ -11,15 +11,39 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/stats.css">
+  <link rel="stylesheet" href="css/member.css">
   <link rel="stylesheet" href="css/classes.css">
 </head>
 <body>
   <a class="skip" href="#view">Skip to content</a>
   <header class="topbar">
-    <img id="brand-logo" class="brand-logo" alt="" hidden>
-    <div>
-      <h1 id="brand-title" class="brand-title">Forced to Wipe</h1>
-      <p id="brand-sub" class="brand-sub"></p>
+    <div class="brand">
+      <img id="brand-logo" class="brand-logo" alt="" hidden>
+      <div class="brand-text">
+        <h1 id="brand-title" class="brand-title">Forced to Wipe</h1>
+        <p id="brand-sub" class="brand-sub"></p>
+      </div>
+    </div>
+
+    <nav class="topnav" aria-label="Main">
+      <a href="#/roster" data-route="roster">Roster</a>
+      <a href="#/stats" data-route="stats">Stats</a>
+      <a href="#/levelups" data-route="levelups">Level-ups</a>
+    </nav>
+
+    <div class="actions">
+      <div class="actions-row">
+        <button id="refresh" class="btn" type="button">Refresh</button>
+        <details id="export-menu" class="export">
+          <summary>Export</summary>
+          <div class="export-list">
+            <a href="api/export/roster.csv">Roster CSV</a>
+            <a href="api/export/stats.csv">Stats CSV</a>
+            <a href="api/export/levelups.csv">Level-ups CSV</a>
+          </div>
+        </details>
+      </div>
+      <p id="refresh-status" class="refresh-status" role="status" aria-live="polite"></p>
     </div>
   </header>
 
@@ -27,16 +51,12 @@
   <main id="view" class="view" tabindex="-1"></main>
 
   <footer class="footer">
-    <p id="updated" class="muted small">Loadingâ€¦</p>
-    <div class="footer-row">
-      <button id="refresh" class="btn" type="button">Refresh</button>
-      <nav class="exports" aria-label="CSV export">
-        <a href="api/export/roster.csv">Roster CSV</a>
-        <a href="api/export/stats.csv">Stats CSV</a>
-        <a href="api/export/levelups.csv">Level-ups CSV</a>
-      </nav>
-    </div>
-    <p id="refresh-status" class="small" role="status" aria-live="polite"></p>
+    <p id="updated" class="muted small">Loading</p>
+    <nav class="exports" aria-label="CSV export">
+      <a href="api/export/roster.csv">Roster CSV</a>
+      <a href="api/export/stats.csv">Stats CSV</a>
+      <a href="api/export/levelups.csv">Level-ups CSV</a>
+    </nav>
   </footer>
 
   <nav class="tabbar" aria-label="Main">

@@ -51,7 +51,7 @@ export function emptyState(title, hint) {
 
 export function errorState(message, onRetry) {
   return el('div', { class: 'state state-error', role: 'alert' },
-    el('p', { class: 'state-title', text: 'Something went wrong' }),
+    el('p', { class: 'state-title', text: 'Could not load' }),
     el('p', { class: 'state-hint', text: message }),
     el('button', { class: 'btn', type: 'button', text: 'Retry', onclick: onRetry }));
 }
