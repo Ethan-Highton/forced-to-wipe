@@ -9,6 +9,7 @@
     "start": "node server/server.js",
     "setup": "node server/setup.js",
     "test": "node --test tests/",
-    "import-levelups": "node server/import-levelups.js"
+    "import-levelups": "node server/import-levelups.js",
+    "deploy": "firebase deploy"
   }
 }
