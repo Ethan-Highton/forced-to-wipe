@@ -11,7 +11,7 @@ Mode: **Operate**. A guild officer on a PC (1440px+), evening, scanning who is l
 - Accent `--accent #ea5a2c` (ember): active sort, links, focus, primary button. `--on-accent` for text on it. `--brass #d1a64f`: records (#1 in a leaderboard/column best) only. Status: `--ok`, `--warn`, `--danger`.
 - Heat ramp `--heat-0..4` for data-cell shading (0 lowest, 4 highest in the column). Class colours stay fills only (`--cls` via `[data-class]`), the class name is always text.
 - Type: `--font-display` Big Shoulders Display 700/800, UPPERCASE for wordmark and section headings, tracking 0.02em, also for large numerals; `--font` IBM Plex Sans 400/500/600 for everything else, `font-variant-numeric: tabular-nums` on all numbers (set on body). Scale `--fs-xs` .. `--fs-4xl`.
-- Radius 10px (`--radius`), 6px small. Depth = `--shadow` (offset + blur), hairlines for structure. One motion moment: on route change rows/blocks fade+rise 14px over 260ms with `--ease-out`, staggered 18ms per item (max 12 items), disabled by prefers-reduced-motion. Hover/focus transitions 120ms.
+- Radius 4px (`--radius`), 2px small: industrial and square-cut, never pill-shaped. Swatches are 10px squares, status marks are small squares or ticks, not circles. Depth = `--shadow` (offset + blur), hairlines for structure. One motion moment: on route change rows/blocks fade+rise 14px over 260ms with `--ease-out`, staggered 18ms per item (max 12 items), disabled by prefers-reduced-motion. Hover/focus transitions 120ms.
 - Browser surfaces are already themed (selection, caret, scrollbars, focus ring); keep them.
 
 ## Shell (all views)
@@ -24,7 +24,7 @@ Desktop: one top bar, left wordmark (display face, uppercase, large) with a sing
 - Under 880px keep the existing card list (restyled with the new tokens). Render both and switch with CSS, or switch on matchMedia; do not duplicate logic.
 
 ## Stats: a heat matrix
-- Top: one row of six **record holders**, not cards: label (muted), name (link) and value in display numerals, brass value. Most deaths, quests, dungeons, boss kills, honorable kills, best BG win rate (min 2 played).
+- Top: the six **leaderboards** the owner loves, KEEP them: Most deaths, Most quests, Most dungeons, Most boss kills, Most honorable kills, Best BG win rate (min 2 played). Each lists the top 5: rank numeral, class swatch, name (link), value right-aligned, and a thin proportional bar in the class colour scaled to the leader (value always also printed as text). Make them better, not different: first place gets brass value text and a larger row, the panel title is a display-face heading, panels sit on a 3-column grid with hairline borders and 4px radius. Ties share weight.
 - Main: ONE sortable matrix with grouped column headers (Deaths | Quests | Dungeons & bosses | PvP). Each numeric cell is shaded with the heat ramp by its rank within the column (quintiles, computed in JS, applied with classes `.h0`..`.h4`, no inline styles), the column best value is bold, ties share a class. No overlay bars (they misaligned). Per-level columns are the same treatment. A member without data shows an em dash and sinks when sorting. Sticky header and sticky first column under 1100px. Row hover draws a crosshair (row highlight + column header tint). Click a row to expand boss kills.
 - Below: **Boss board** as a table, not cards: one row per boss grouped under dungeon sub-headers; columns Boss, Guild kills, then who (class-swatch dots with member first names and counts as text), sorted by instance total.
 
@@ -38,3 +38,13 @@ Feed grouped by day: a narrow date column on the left (display numerals for the 
 
 ## Copy and states
 Real labels, no filler. Every view keeps loading skeleton, empty, error-with-retry and the stale banner (restyled: warn colour text on --surface-2, a 1px warn border, not a thick left border). Buttons: primary = ember fill; secondary = hairline outline. Tap targets >= 44px under 880px. Contrast >= 4.5:1 for all text. All API strings via textContent. No inline styles or scripts (CSP). No new dependencies.
+
+## Authored, not templated (this overrides any softer instruction above)
+The owner's verdict on the first version: "super AI vibe coded". These are the tells to remove, and what replaces them.
+- **No pill chips.** Race, rank, class, item level and activity are plain text separated by a middle dot or set in columns, never bordered rounded badges. At most one filled marker per row (the class swatch square).
+- **Fewer boxes.** Structure with hairline rules, whitespace and column alignment. The leaderboards are the ONLY panelled elements on the Stats page; the roster is a ruled ledger; the member page is open sections divided by rules. No card inside a card, no shadow on everything.
+- **Scale contrast.** Numerals that matter are big (display face 2.4rem to 6rem), labels are small and quiet, body is 14-15px. Avoid the middle: uniform 16px rows with uniform padding look generated.
+- **Ledger rules.** Section headings are display-face UPPERCASE with a hairline rule running to the right edge (a ledger line); tables use rules, not zebra stripes or boxed cells.
+- **Square geometry.** 4px radius everywhere, 1px lines, one 2px ember underline for the active state. No glows, no blur, no gradient fills on UI, no emoji, no unicode arrows as icons (draw small inline SVG chevrons and arrows with currentColor).
+- **Voice.** Terse guild-officer copy: "Nobody has levelled since tracking began." rather than "No level-ups recorded yet". Real numbers in every empty or summary line.
+- **Rhythm.** 8px base, deliberately varied: tight inside a row (4-6px), generous between sections (48-64px). Left edges align on one grid line down the page.
