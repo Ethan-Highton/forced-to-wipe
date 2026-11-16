@@ -76,3 +76,15 @@ test('static maps', () => {
   assert.equal(raceName(25), 'Pandaren');
   assert.equal(raceName(999), 'Unknown');
 });
+
+test('need and greed roll counts come from statistics 1044 and 1043', async () => {
+  const fs = await import('node:fs');
+  const read = (f) => JSON.parse(fs.readFileSync(new URL(`../fixtures/${f}`, import.meta.url), 'utf8'));
+  const { parseStatistics } = await import('../../server/parse.js');
+  const j = parseStatistics(read('jeezus-statistics.json'));
+  assert.equal(j.need, 71);
+  assert.equal(j.greed, 234);
+  const c = parseStatistics(read('carlos-statistics.json'));
+  assert.equal(c.need, 22);
+  assert.equal(c.greed, 132);
+});

@@ -1,5 +1,5 @@
 // Pure helpers for the Member page (no DOM): meter steps, guild ranks, row models.
-import { bgTotals } from './derive.js';
+import { needShare, bgTotals } from './derive.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -48,6 +48,9 @@ export const MEMBER_STATS = [
   { key: 'played', label: 'BGs played', value: (m) => m.pvp && bgTotals(m.pvp).played },
   { key: 'won', label: 'BGs won', value: (m) => m.pvp && bgTotals(m.pvp).won },
   { key: 'winRate', label: 'Win rate', percent: true, value: (m) => m.pvp && bgTotals(m.pvp).winRate },
+  { key: 'need', label: 'Need rolls', value: (m) => m.stats && m.stats.need },
+  { key: 'greed', label: 'Greed rolls', value: (m) => m.stats && m.stats.greed },
+  { key: 'needPct', label: 'Need %', percent: true, value: (m) => m.stats && needShare(m.stats) },
 ];
 
 // One entry per stat: { key, label, percent, value, rank } with rank = { rank, of } or null.

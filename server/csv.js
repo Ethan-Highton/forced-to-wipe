@@ -53,7 +53,7 @@ export function rosterCsv(members) {
 }
 
 export function statsCsv(members) {
-  const headers = ['Name', 'Deaths', 'Quests', 'Dungeons', 'Boss kills', 'HKs', 'BGs played', 'BGs won', 'BG win %'];
+  const headers = ['Name', 'Deaths', 'Quests', 'Dungeons', 'Boss kills', 'HKs', 'BGs played', 'BGs won', 'BG win %', 'Need rolls', 'Greed rolls', 'Need %'];
   return toCsv(headers, members.map((m) => {
     const played = (m.pvp?.bgs ?? []).reduce((s, b) => s + b.played, 0);
     const won = (m.pvp?.bgs ?? []).reduce((s, b) => s + b.won, 0);
@@ -61,6 +61,8 @@ export function statsCsv(members) {
       fullName(m), m.stats?.deaths ?? '', m.stats?.quests ?? '', m.stats?.dungeons ?? '',
       m.stats?.bossKills ?? '', m.pvp?.hk ?? '', m.pvp ? played : '', m.pvp ? won : '',
       played ? Math.round((won / played) * 100) : '',
+      m.stats?.need ?? '', m.stats?.greed ?? '',
+      (m.stats?.need || m.stats?.greed) ? Math.round((m.stats.need / (m.stats.need + m.stats.greed)) * 100) : '',
     ];
   }));
 }

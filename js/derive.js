@@ -184,3 +184,11 @@ export function filterMembers(members, f, now = Date.now(), days = DEFAULT_ACTIV
     return true;
   });
 }
+
+/** Share of loot rolls that were Need: need / (need + greed), or null when no rolls are recorded. */
+export function needShare(stats) {
+  if (!stats) return null;
+  const need = Number(stats.need) || 0;
+  const greed = Number(stats.greed) || 0;
+  return need + greed > 0 ? need / (need + greed) : null;
+}

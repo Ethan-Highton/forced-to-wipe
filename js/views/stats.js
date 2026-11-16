@@ -1,5 +1,5 @@
 import { el, svg, emptyState } from '../dom.js';
-import { bgTotals, leaders, bossBoard, perLevel } from '../derive.js';
+import { bgTotals, leaders, bossBoard, perLevel, needShare } from '../derive.js';
 import { formatNumber, formatPercent, fullName } from '../format.js';
 import { heatClasses, columnBest, compareValues, recordHolders, bossRows, firstName } from '../stats-model.js';
 import { meterClass } from '../member-model.js';
@@ -17,7 +17,7 @@ const bossKills = (m) => m.stats && m.stats.bossKills;
 const hk = (m) => m.pvp && m.pvp.hk;
 const played = (m) => m.pvp && bgTotals(m.pvp).played;
 
-const GROUPS = ['Deaths', 'Quests', 'Dungeons & bosses', 'PvP'];
+const GROUPS = ['Deaths', 'Quests', 'Dungeons & bosses', 'PvP', 'Loot rolls'];
 const COLUMNS = [
   { key: 'name', label: 'Member', text: true, value: (m) => fullName(m) },
   { key: 'deaths', group: 0, label: 'Total', sr: 'Deaths ', value: deaths },
@@ -30,6 +30,9 @@ const COLUMNS = [
   { key: 'played', group: 3, label: 'Played', sr: 'Battlegrounds ', value: played },
   { key: 'won', group: 3, label: 'Won', sr: 'Battlegrounds ', value: (m) => m.pvp && bgTotals(m.pvp).won },
   { key: 'winPct', group: 3, label: 'Win %', fmt: pct, value: (m) => m.pvp && bgTotals(m.pvp).winRate },
+  { key: 'need', group: 4, label: 'Need', sr: 'Loot rolls ', value: (m) => m.stats && m.stats.need },
+  { key: 'greed', group: 4, label: 'Greed', sr: 'Loot rolls ', value: (m) => m.stats && m.stats.greed },
+  { key: 'needPct', group: 4, label: 'Need %', fmt: pct, value: (m) => m.stats && needShare(m.stats) },
 ];
 
 // Reveal motion lives in js/motion.js; the page works without it.
@@ -94,6 +97,16 @@ const BOARDS = [
     fmt: formatPercent,
     detail: (m) => { const b = bgTotals(m.pvp); return `${b.won}/${b.played} won`; },
   },
+  {
+    title: 'Highest need %',
+    note: 'Min. 10 rolls',
+    value: (m) => m.stats && needShare(m.stats),
+    opts: { min: 10, played: (m) => (m.stats ? (m.stats.need || 0) + (m.stats.greed || 0) : 0) },
+    fmt: formatPercent,
+    detail: (m) => `${formatNumber(m.stats.need)} need / ${formatNumber(m.stats.greed)} greed`,
+  },
+  { title: 'Most need rolls', value: (m) => m.stats && m.stats.need },
+  { title: 'Most greed rolls', value: (m) => m.stats && m.stats.greed },
 ];
 
 function leaderCard(board, members) {

@@ -4,6 +4,8 @@
 const STAT_DEATHS = 60;
 const STAT_QUESTS = 98;
 const STAT_DUNGEONS = 932;
+const STAT_GREED = 1043;
+const STAT_NEED = 1044;
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -93,6 +95,8 @@ export function parseStatistics(json) {
     deaths: q(STAT_DEATHS),
     quests: q(STAT_QUESTS),
     dungeons: q(STAT_DUNGEONS),
+    need: q(STAT_NEED),
+    greed: q(STAT_GREED),
     bossKills: bosses.reduce((sum, b) => sum + b.count, 0),
     bosses,
   };

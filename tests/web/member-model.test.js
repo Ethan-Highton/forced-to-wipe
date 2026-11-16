@@ -51,7 +51,7 @@ test('rankLabel', () => {
 test('statRows covers every stat and tolerates a member with no data', () => {
   const bare = mk('z', null);
   const rows = statRows([bare], bare);
-  assert.equal(rows.length, 8);
+  assert.equal(rows.length, 11);
   assert.ok(rows.every((r) => r.value === null && r.rank === null));
   const full = mk('f', 3, { pvp: { hk: 9, bgs: [{ name: 'WSG', played: 4, won: 1 }] } });
   const r = Object.fromEntries(statRows([full, bare], full).map((x) => [x.key, x]));
